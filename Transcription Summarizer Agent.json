@@ -1,0 +1,285 @@
+{
+  "name": "Transcription Summarizer Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{ $json.chatInput }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "1f6961a6-615c-4a04-9def-82b3960b7563",
+      "name": "Download video"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/translations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "bearer <YOUR_GROQ_API>"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-large-v3"
+            },
+            {
+              "name": "prompt",
+              "value": "Specify context or spelling"
+            },
+            {
+              "name": "language",
+              "value": "en"
+            },
+            {
+              "name": "temperature",
+              "value": "0"
+            },
+            {
+              "name": "response_format",
+              "value": "json"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "471fbef6-cb87-4e1d-964c-a4d70654d4ac",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        656,
+        224
+      ],
+      "id": "b94d1b53-9d5b-42a4-adec-151c951ac126",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Your-Credentials",
+          "name": "Google Gemini API Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "= {{ $json.text }}",
+        "options": {
+          "systemMessage": "=You are a document processor and summarizer. Your job is to create a document with original content and summary, then return the summary content to the user.\nStep-by-Step Execution Flow:\n\nCreate Document: Use \"Create document\" tool to create a new Google Doc\nAdd Original Content: Use \"Update document\" tool to add the user's provided text\nGenerate Summary: Analyze the content and create a comprehensive summary with bullet points covering:\n• Key themes and main points\n• Important details and insights\n• Action items or next steps\n• Conclusions and recommendations\n• Notable data or statistics\nAdd Summary to Document: Use \"Update document\" tool again to append the summary section to the document\nRetrieve Final Content: Use \"get document\" tool to fetch the complete document content including both original text and summary\nReturn Summary: Extract and return the summary portion from the retrieved document content to the user\n\nImportant Instructions:\n\nAlways use \"get document\" at the end to retrieve the full content\nExtract and display the summary section in your response to the user\nProvide both the document link AND the summary content in your output\nFormat the summary clearly with bullet points for easy reading\n\nOutput Format:\n\"Here is your document: [link]\nSUMMARY:\n\nPoint 1\nPoint 2\nPoint 3\n[etc.]\"\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "id": "dd071855-e33e-4664-9de7-e79647f7e594",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "folderId": "",
+        "title": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', ``, 'string') }}"
+      },
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
+      "position": [
+        800,
+        224
+      ],
+      "id": "",
+      "name": "Create document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Doc_ID_or_URL', ``, 'string') }}"
+      },
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
+      "position": [
+        928,
+        224
+      ],
+      "id": "",
+      "name": "get document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "",
+          "name": "Google Docs Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Doc_ID_or_URL', ``, 'string') }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('actionFields0_Text', ``, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        224
+      ],
+      "id": "",
+      "name": "Update  document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fb016bfc-b969-40b8-bd45-37313032e17d",
+      "name": "When chat message received",
+      "webhookId": "1e873b8f-be5e-4d6c-b977-fe14e875b17b"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Download video": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create document": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get document": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update  document": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Download video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "df8486c4-3d96-4ddc-92fa-d3e3ad77fc8f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "969257b09ad2942bbaff2e2288304f4969030574d109cdeca05bf11f630884df"
+  },
+  "id": "4TgijQfQpGzLuDJT",
+  "tags": []
+}
